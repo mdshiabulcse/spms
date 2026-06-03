@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — Clinic PMS{% endblock %}
+{% block page_heading %}Dashboard{% endblock %}
+{% block page_sub %}Today’s snapshot of patients, visits, and revenue{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="card stat-card text-bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-white-50 small">Total patients</div>
+                        <div class="fs-3 fw-bold">{{ total_patients }}</div>
+                    </div>
+                    <i class="bi bi-people fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card stat-card text-bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-dark-emphasis small">Today’s appointments</div>
+                        <div class="fs-3 fw-bold text-dark">{{ today_appointments }}</div>
+                    </div>
+                    <i class="bi bi-calendar-event fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card stat-card text-bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="small opacity-75">Pending visits</div>
+                        <div class="fs-3 fw-bold">{{ pending_appointments }}</div>
+                    </div>
+                    <i class="bi bi-hourglass-split fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card stat-card text-bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-white-50 small">Revenue (paid)</div>
+                        <div class="fs-5 fw-bold">{{ revenue }}</div>
+                    </div>
+                    <i class="bi bi-currency-dollar fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card clinic-card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small fw-semibold">Waiting</h6>
+                <p class="fs-3 fw-bold mb-0">{{ waiting_appointments }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card clinic-card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small fw-semibold">Completed</h6>
+                <p class="fs-3 fw-bold mb-0">{{ done_appointments }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card clinic-card h-100 border-start border-danger border-4">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small fw-semibold">Total due</h6>
+                <p class="fs-3 fw-bold text-danger mb-0">{{ due_total }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card clinic-card">
+    <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="fw-semibold"><i class="bi bi-calendar-day me-2 text-primary"></i>Today’s appointments</span>
+        {% if can_edit_appointments %}
+        <a href="{% url 'appointments:appointment_create' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>New appointment
+        </a>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Serial</th>
+                    <th>Patient</th>
+                    <th>Status</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appt in recent_appointments %}
+                <tr>
+                    <td><span class="badge bg-light text-dark">{{ appt.serial_no }}</span></td>
+                    <td>{{ appt.patient.name }}</td>
+                    <td><span class="badge badge-{{ appt.status|lower }}">{{ appt.get_status_display }}</span></td>
+                    <td class="text-muted small">{{ appt.note|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-muted py-5">No appointments scheduled for today.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

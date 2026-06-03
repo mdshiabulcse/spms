@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Appointments — Clinic PMS{% endblock %}
+{% block page_heading %}Appointments{% endblock %}
+{% block page_sub %}Track visit status: Pending → Waiting → Done{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div></div>
+    {% if can_edit_appointments %}
+    <a href="{% url 'appointments:appointment_create' %}" class="btn btn-primary">
+        <i class="bi bi-calendar-plus me-1"></i>New appointment
+    </a>
+    {% endif %}
+</div>
+<div class="card clinic-card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4 col-lg-3">
+                <label class="form-label small text-muted mb-1">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All statuses</option>
+                    {% for val, label in status_choices %}
+                    <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-funnel me-1"></i>Apply filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="card clinic-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Patient</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Note</th>
+                    <th>Billing</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appt in appointments %}
+                <tr>
+                    <td><span class="badge bg-light text-dark">{{ appt.serial_no }}</span></td>
+                    <td class="fw-medium">{{ appt.patient.name }}</td>
+                    <td>{{ appt.date }}</td>
+                    <td><span class="badge badge-{{ appt.status|lower }}">{{ appt.get_status_display }}</span></td>
+                    <td class="text-muted small">{{ appt.note|default:"—" }}</td>
+                    <td>
+                        {% if appt.invoice %}
+                        <a href="{% url 'billing:invoice_detail' appt.invoice.pk %}" class="btn btn-sm btn-outline-secondary">Invoice #{{ appt.invoice.pk }}</a>
+                        <a href="{% url 'billing:invoice_simple' appt.invoice.pk %}" class="btn btn-sm btn-outline-primary">Print</a>
+                        {% elif can_edit_billing %}
+                        <a href="{% url 'billing:invoice_create' %}?appointment={{ appt.pk }}" class="btn btn-sm btn-primary"><i class="bi bi-receipt me-1"></i>Create invoice</a>
+                        {% else %}
+                        <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if can_edit_appointments and appt.can_advance_status %}
+                        <form method="post" action="{% url 'appointments:appointment_status_update' appt.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-arrow-right-circle me-1"></i>Advance</button>
+                        </form>
+                        {% elif not can_edit_appointments %}
+                        <span class="text-muted small">View only</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Done</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-5">No appointments found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

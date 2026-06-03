@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Delete patient — Clinic PMS{% endblock %}
+{% block page_heading %}Remove patient{% endblock %}
+{% block page_sub %}This action cannot be undone if there are no linked appointments{% endblock %}
+{% block content %}
+<div class="card clinic-card border-danger border-opacity-25">
+    <div class="card-body p-4">
+        <p class="mb-4">Delete <strong>{{ patient.name }}</strong> and their record?</p>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Delete permanently</button>
+            <a href="{% url 'patients:patient_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

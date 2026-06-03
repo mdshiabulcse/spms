@@ -1,0 +1,172 @@
+:root {
+  --clinic-primary: #0d6efd;
+  --clinic-sidebar: #1a2b4a;
+  --clinic-sidebar-hover: #243a5c;
+}
+
+.clinic-body {
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e8eef5 50%, #f5f7fa 100%);
+  min-height: 100vh;
+}
+
+.clinic-sidebar {
+  width: 260px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--clinic-sidebar) 0%, #0f1930 100%);
+  position: sticky;
+  top: 0;
+  display: none;
+}
+
+@media (min-width: 992px) {
+  .clinic-sidebar#sidebar {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.clinic-nav-link {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.clinic-nav-link:hover {
+  background: var(--clinic-sidebar-hover);
+  color: #fff;
+}
+
+.clinic-nav-link.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-weight: 600;
+}
+
+.clinic-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+}
+
+.clinic-card {
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.125rem 0.5rem rgba(26, 43, 74, 0.08);
+}
+
+.stat-card {
+  border-radius: 0.75rem;
+  border: none;
+  overflow: hidden;
+}
+
+.stat-card .card-body {
+  padding: 1.25rem;
+}
+
+.badge-pending { background-color: #ffc107; color: #000; }
+.badge-waiting { background-color: #0dcaf0; color: #000; }
+.badge-done { background-color: #198754; color: #fff; }
+.badge-unpaid { background-color: #dc3545; color: #fff; }
+.badge-partial { background-color: #fd7e14; color: #fff; }
+.badge-paid { background-color: #198754; color: #fff; }
+.badge-void { background-color: #6c757d; color: #fff; }
+
+.offcanvas.clinic-sidebar {
+  background: linear-gradient(180deg, var(--clinic-sidebar) 0%, #0f1930 100%);
+}
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #1a2b4a 0%, #0d6efd 50%, #5a9fd4 100%);
+}
+
+.login-card {
+  max-width: 420px;
+  width: 100%;
+  border-radius: 1rem;
+  border: none;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.2);
+}
+
+.invoice-form-page .invoice-summary-table th {
+  font-weight: 500;
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+.invoice-form-page .invoice-summary-table td {
+  font-weight: 600;
+  text-align: right;
+}
+
+.invoice-form-page .invoice-summary-table tr.invoice-summary-total td,
+.invoice-form-page .invoice-summary-table tr.invoice-summary-total th {
+  font-size: 1.125rem;
+  color: var(--clinic-primary);
+  border-top: 2px solid #dee2e6;
+  padding-top: 0.75rem;
+}
+
+.invoice-form-page .form-control[readonly] {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #198754;
+}
+
+.patient-form-page .info-dl dt,
+.invoice-form-page .info-dl dt {
+  color: #6c757d;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.patient-form-page .info-dl dd,
+.invoice-form-page .info-dl dd {
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+
+.patient-form-page .info-dl dd:last-child,
+.invoice-form-page .info-dl dd:last-child {
+  margin-bottom: 0;
+}
+
+.patient-form-page .gender-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  padding-top: 0.25rem;
+}
+
+.patient-form-page .gender-options .form-check {
+  margin-bottom: 0;
+  min-width: 6rem;
+}
+
+.patient-form-page .form-section-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6c757d;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.patient-form-page .required-mark {
+  color: #dc3545;
+}

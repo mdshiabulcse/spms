@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Patients — Clinic PMS{% endblock %}
+{% block page_heading %}Patients{% endblock %}
+{% block page_sub %}Search, register, and update patient records{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div></div>
+    {% if can_write_patients %}
+    <a href="{% url 'patients:patient_create' %}" class="btn btn-primary">
+        <i class="bi bi-person-plus me-1"></i>Add patient
+    </a>
+    {% endif %}
+</div>
+<div class="card clinic-card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-8 col-lg-9">
+                <label class="form-label small text-muted mb-1">Search</label>
+                <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Name, phone, or patient ID">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>Search</button>
+                {% if query %}<a href="{% url 'patients:patient_list' %}" class="btn btn-outline-secondary">Clear</a>{% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+<div class="card clinic-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>DOB</th>
+                    <th>Age</th>
+                    <th>Gender</th>
+                    <th>Registered</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in patients %}
+                <tr>
+                    <td><code>{{ patient.id }}</code></td>
+                    <td class="fw-medium">{{ patient.name }}</td>
+                    <td>{{ patient.phone }}</td>
+                    <td class="text-muted small">{% if patient.date_of_birth %}{{ patient.date_of_birth|date:"M d, Y" }}{% else %}—{% endif %}</td>
+                    <td>{% if patient.display_age is not None %}{{ patient.display_age }}{% else %}—{% endif %}</td>
+                    <td>{{ patient.get_gender_display }}</td>
+                    <td class="text-muted small">{{ patient.created_at|date:"M d, Y" }}</td>
+                    <td class="text-end text-nowrap">
+                        {% if can_edit_appointments %}
+                        <a href="{% url 'appointments:appointment_create' %}?patient={{ patient.pk }}" class="btn btn-sm btn-outline-success" title="Create appointment">
+                            <i class="bi bi-calendar-plus"></i>
+                        </a>
+                        {% endif %}
+                        {% if can_write_patients %}
+                        <a href="{% url 'patients:patient_edit' patient.pk %}" class="btn btn-sm btn-outline-primary" title="Edit patient"><i class="bi bi-pencil"></i></a>
+                        {% endif %}
+                        {% if can_delete_patients %}
+                        <a href="{% url 'patients:patient_delete' patient.pk %}" class="btn btn-sm btn-outline-danger" title="Delete patient"><i class="bi bi-trash"></i></a>
+                        {% endif %}
+                        {% if not can_write_patients and not can_delete_patients and not can_edit_appointments %}
+                        <span class="text-muted small">View only</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted py-5">No patients match your search.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

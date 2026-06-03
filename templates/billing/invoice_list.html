@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Invoices — Clinic PMS{% endblock %}
+{% block page_heading %}Invoices{% endblock %}
+{% block page_sub %}Payments, discounts, voids, and balances{% endblock %}
+{% block content %}
+<div class="card clinic-card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Payment status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    {% for val, label in status_choices %}
+                    <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Void</label>
+                <select name="void" class="form-select">
+                    <option value="">All</option>
+                    <option value="0" {% if request.GET.void == '0' %}selected{% endif %}>Active only</option>
+                    <option value="1" {% if request.GET.void == '1' %}selected{% endif %}>Void only</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="card clinic-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Patient</th>
+                    <th>Total</th>
+                    <th>Paid</th>
+                    <th>Due</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr class="{% if inv.is_void %}table-secondary{% endif %}">
+                    <td><code>{{ inv.id }}</code></td>
+                    <td class="fw-medium">{{ inv.appointment.patient.name }}</td>
+                    <td>{{ inv.total }}</td>
+                    <td>{{ inv.paid }}</td>
+                    <td class="{% if inv.due %}text-danger fw-medium{% endif %}">{{ inv.due }}</td>
+                    <td>
+                        <span class="badge badge-{{ inv.status|lower }}">{{ inv.get_status_display }}</span>
+                        {% if inv.is_void %}<span class="badge badge-void">VOID</span>{% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'billing:invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                        {% if can_edit_billing and not inv.is_locked %}
+                        <form method="post" action="{% url 'billing:invoice_void' %}" class="d-inline" onsubmit="return confirm('Void this invoice? This cannot be undone.');">
+                            {% csrf_token %}
+                            <input type="hidden" name="invoice_id" value="{{ inv.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-octagon"></i></button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-5">No invoices yet. Create them from the <a href="{% url 'appointments:appointment_list' %}">Appointments</a> list.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

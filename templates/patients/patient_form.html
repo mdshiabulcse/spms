@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block title %}{% if is_edit %}Edit{% else %}Register{% endif %} patient — Clinic PMS{% endblock %}
+{% block page_heading %}{% if is_edit %}Edit patient{% else %}Register patient{% endif %}{% endblock %}
+{% block page_sub %}{% if is_edit %}Update contact and demographic details{% else %}Add a new patient to the clinic registry{% endif %}{% endblock %}
+
+{% block content %}
+<div class="patient-form-page">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'patients:patient_list' %}">Patients</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{% if is_edit %}{{ patient.name }}{% else %}New registration{% endif %}</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        <div class="col-lg-4 order-lg-2">
+            {% if is_edit %}
+            <div class="card clinic-card">
+                <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                    <h2 class="h6 mb-0 fw-semibold text-uppercase text-muted small">
+                        <i class="bi bi-folder2-open me-2 text-primary"></i>Record summary
+                    </h2>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0"
+                             style="width: 3rem; height: 3rem;">
+                            <i class="bi bi-person-fill fs-5"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">{{ patient.name }}</div>
+                            <code class="small text-muted">ID #{{ patient.pk }}</code>
+                        </div>
+                    </div>
+                    <dl class="row info-dl mb-0">
+                        <dt class="col-6">Registered</dt>
+                        <dd class="col-6">{{ patient.created_at|date:"M j, Y" }}</dd>
+
+                        <dt class="col-6">Current age</dt>
+                        <dd class="col-6" id="patient-record-age">
+                            {% if patient.display_age is not None %}
+                                {{ patient.display_age }} years
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-6">Appointments</dt>
+                        <dd class="col-6">{{ appointment_count }}</dd>
+
+                        <dt class="col-6">Phone on file</dt>
+                        <dd class="col-6 text-break">{{ patient.phone }}</dd>
+                    </dl>
+                </div>
+            </div>
+            {% else %}
+            <div class="card clinic-card border-primary border-opacity-25">
+                <div class="card-body p-4">
+                    <h2 class="h6 fw-semibold mb-3">
+                        <i class="bi bi-info-circle text-primary me-2"></i>Before you save
+                    </h2>
+                    <ul class="small text-muted mb-0 ps-3">
+                        <li class="mb-2">Use the patient’s <strong>legal full name</strong> for consistency across visits.</li>
+                        <li class="mb-2"><strong>Date of birth</strong> is required and used to calculate age automatically.</li>
+                        <li class="mb-2">Phone should be reachable for appointment reminders.</li>
+                        <li>Address is optional but helpful for reports.</li>
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-8 order-lg-1">
+            <div class="card clinic-card">
+                <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                    <h2 class="h6 mb-1 fw-semibold">
+                        <i class="bi bi-person-plus me-2 text-primary"></i>Patient details
+                    </h2>
+                    <p class="text-muted small mb-0">
+                        Fields marked with <span class="required-mark">*</span> are required.
+                    </p>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" novalidate id="patient-form">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <p class="form-section-title"><i class="bi bi-person me-1"></i> Personal information</p>
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="{{ form.name.id_for_label }}">
+                                    {{ form.name.label }} <span class="required-mark">*</span>
+                                </label>
+                                {{ form.name }}
+                                {% if form.name.help_text %}<div class="form-text">{{ form.name.help_text }}</div>{% endif %}
+                                {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors }}</div>{% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="{{ form.date_of_birth.id_for_label }}">
+                                    {{ form.date_of_birth.label }}
+                                    {% if form.date_of_birth.field.required %}<span class="required-mark">*</span>{% endif %}
+                                </label>
+                                {{ form.date_of_birth }}
+                                {% if form.date_of_birth.help_text %}<div class="form-text">{{ form.date_of_birth.help_text }}</div>{% endif %}
+                                {% if form.date_of_birth.errors %}<div class="text-danger small mt-1">{{ form.date_of_birth.errors }}</div>{% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold d-block mb-2">
+                                    {{ form.gender.label }} <span class="required-mark">*</span>
+                                </label>
+                                <div class="gender-options">
+                                    {% for radio in form.gender %}
+                                    <div class="form-check">
+                                        {{ radio.tag }}
+                                        <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% if form.gender.errors %}<div class="text-danger small mt-1">{{ form.gender.errors }}</div>{% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <div class="rounded-3 bg-light border px-3 py-2 small d-flex align-items-center gap-2">
+                                    <i class="bi bi-calendar3 text-primary"></i>
+                                    <span class="text-muted">Calculated age:</span>
+                                    <strong id="patient-age-preview" class="text-dark">—</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="form-section-title"><i class="bi bi-telephone me-1"></i> Contact information</p>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="{{ form.phone.id_for_label }}">
+                                    {{ form.phone.label }} <span class="required-mark">*</span>
+                                </label>
+                                {{ form.phone }}
+                                {% if form.phone.help_text %}<div class="form-text">{{ form.phone.help_text }}</div>{% endif %}
+                                {% if form.phone.errors %}<div class="text-danger small mt-1">{{ form.phone.errors }}</div>{% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="{{ form.address.id_for_label }}">
+                                    {{ form.address.label }}
+                                </label>
+                                {{ form.address }}
+                                {% if form.address.help_text %}<div class="form-text">{{ form.address.help_text }}</div>{% endif %}
+                                {% if form.address.errors %}<div class="text-danger small mt-1">{{ form.address.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 pt-3 border-top">
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="bi bi-check2-circle me-1"></i>
+                                {% if is_edit %}Save changes{% else %}Register patient{% endif %}
+                            </button>
+                            <a href="{% url 'patients:patient_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Back to list
+                            </a>
+                            {% if is_edit and can_edit_appointments %}
+                            <a href="{% url 'appointments:appointment_create' %}?patient={{ patient.pk }}"
+                               class="btn btn-outline-success ms-lg-auto">
+                                <i class="bi bi-calendar-plus me-1"></i>Schedule appointment
+                            </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const dobInput = document.getElementById('{{ form.date_of_birth.id_for_label }}');
+    const agePreview = document.getElementById('patient-age-preview');
+    const recordAge = document.getElementById('patient-record-age');
+
+    function calculateAge(fromDate) {
+        const today = new Date();
+        let age = today.getFullYear() - fromDate.getFullYear();
+        const monthDiff = today.getMonth() - fromDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < fromDate.getDate())) {
+            age -= 1;
+        }
+        return age >= 0 ? age : null;
+    }
+
+    function updateAgePreview() {
+        if (!dobInput || !dobInput.value) {
+            agePreview.textContent = '—';
+            return;
+        }
+        const parts = dobInput.value.split('-');
+        if (parts.length !== 3) {
+            agePreview.textContent = '—';
+            return;
+        }
+        const dob = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        if (Number.isNaN(dob.getTime())) {
+            agePreview.textContent = '—';
+            return;
+        }
+        const age = calculateAge(dob);
+        if (age === null) {
+            agePreview.textContent = 'Invalid date';
+            return;
+        }
+        const label = age + ' years';
+        agePreview.textContent = label;
+        if (recordAge) {
+            recordAge.textContent = label;
+        }
+    }
+
+    if (dobInput) {
+        dobInput.addEventListener('change', updateAgePreview);
+        dobInput.addEventListener('input', updateAgePreview);
+        updateAgePreview();
+    }
+})();
+</script>
+{% endblock %}

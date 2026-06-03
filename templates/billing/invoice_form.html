@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% block title %}New invoice — Clinic PMS{% endblock %}
+{% block page_heading %}Create invoice{% endblock %}
+{% block page_sub %}Record payment for this visit{% endblock %}
+
+{% block content %}
+<div class="invoice-form-page">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'appointments:appointment_list' %}">Appointments</a></li>
+            <li class="breadcrumb-item active" aria-current="page">New invoice</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card clinic-card h-100">
+                <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                    <h2 class="h6 mb-0 fw-semibold text-uppercase text-muted small">
+                        <i class="bi bi-person-vcard me-2 text-primary"></i>Patient information
+                    </h2>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0"
+                             style="width: 3.25rem; height: 3.25rem;">
+                            <i class="bi bi-person-fill fs-4"></i>
+                        </div>
+                        <div>
+                            <div class="fs-5 fw-semibold text-dark">{{ patient.name }}</div>
+                            <div class="text-muted small">Patient ID <code class="user-select-all">#{{ patient.pk }}</code></div>
+                        </div>
+                    </div>
+                    <dl class="row info-dl mb-0">
+                        <dt class="col-sm-5">Phone</dt>
+                        <dd class="col-sm-7">{{ patient.phone }}</dd>
+
+                        <dt class="col-sm-5">Gender</dt>
+                        <dd class="col-sm-7">{{ patient.get_gender_display }}</dd>
+
+                        <dt class="col-sm-5">Date of birth</dt>
+                        <dd class="col-sm-7">
+                            {% if patient.date_of_birth %}
+                                {{ patient.date_of_birth|date:"F j, Y" }}
+                            {% else %}
+                                <span class="text-muted">Not recorded</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-5">Age</dt>
+                        <dd class="col-sm-7">
+                            {% if patient.display_age is not None %}
+                                {{ patient.display_age }} years
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-5">Address</dt>
+                        <dd class="col-sm-7">
+                            {% if patient.address %}
+                                {{ patient.address|linebreaksbr }}
+                            {% else %}
+                                <span class="text-muted">Not recorded</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card clinic-card mt-4">
+                <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                    <h2 class="h6 mb-0 fw-semibold text-uppercase text-muted small">
+                        <i class="bi bi-calendar-check me-2 text-primary"></i>Visit details
+                    </h2>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <dl class="row info-dl mb-0">
+                        <dt class="col-sm-5">Visit date</dt>
+                        <dd class="col-sm-7">{{ appointment.date|date:"l, F j, Y" }}</dd>
+
+                        <dt class="col-sm-5">Queue no.</dt>
+                        <dd class="col-sm-7"><span class="badge bg-light text-dark border">#{{ appointment.serial_no }}</span></dd>
+
+                        <dt class="col-sm-5">Status</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge badge-{{ appointment.status|lower }}">{{ appointment.get_status_display }}</span>
+                        </dd>
+
+                        <dt class="col-sm-5">Appointment ID</dt>
+                        <dd class="col-sm-7"><code class="user-select-all">#{{ appointment.pk }}</code></dd>
+
+                        <dt class="col-sm-5">Clinical note</dt>
+                        <dd class="col-sm-7">
+                            {% if appointment.note %}
+                                <span class="text-muted">{{ appointment.note }}</span>
+                            {% else %}
+                                <span class="text-muted fst-italic">No note</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card clinic-card">
+                <div class="card-header bg-white border-0 pt-4 pb-0 px-4 d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <div>
+                        <h2 class="h6 mb-1 fw-semibold text-uppercase text-muted small">
+                            <i class="bi bi-receipt me-2 text-primary"></i>Billing details
+                        </h2>
+                        <p class="text-muted small mb-0">Enter charges below. Paid amount is calculated automatically.</p>
+                    </div>
+                    <span class="badge text-bg-light text-dark border">
+                        <i class="bi bi-clock me-1"></i>{% now "M d, Y · g:i A" %}
+                    </span>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" id="invoice-create-form" novalidate>
+                        {% csrf_token %}
+                        {{ form.appointment }}
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="{{ form.total.id_for_label }}">
+                                    {{ form.total.label }} <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">৳</span>
+                                    {{ form.total }}
+                                </div>
+                                {% if form.total.errors %}
+                                <div class="text-danger small mt-1">{{ form.total.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="{{ form.discount.id_for_label }}">
+                                    {{ form.discount.label }}
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">৳</span>
+                                    {{ form.discount }}
+                                </div>
+                                {% if form.discount.help_text %}
+                                <div class="form-text">{{ form.discount.help_text }}</div>
+                                {% endif %}
+                                {% if form.discount.errors %}
+                                <div class="text-danger small mt-1">{{ form.discount.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold" for="invoice-paid-display">Paid amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">৳</span>
+                                <input type="text" id="invoice-paid-display"
+                                       class="form-control text-end" readonly value="0.00"
+                                       aria-readonly="true" tabindex="-1">
+                            </div>
+                            <div class="form-text">Read-only: total minus discount (saved as full payment).</div>
+                        </div>
+
+                        <div class="table-responsive rounded-3 border mb-4">
+                            <table class="table table-sm invoice-summary-table mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row" class="ps-3 py-2">Subtotal (gross)</th>
+                                        <td class="pe-3 py-2"><span id="invoice-gross-display">0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row" class="ps-3 py-2">Discount</th>
+                                        <td class="pe-3 py-2 text-danger">− <span id="invoice-discount-display">0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row" class="ps-3 py-2">Net payable</th>
+                                        <td class="pe-3 py-2"><span id="invoice-net-display">0.00</span></td>
+                                    </tr>
+                                    <tr class="invoice-summary-total">
+                                        <th scope="row" class="ps-3 pb-3">Amount paid</th>
+                                        <td class="pe-3 pb-3">৳ <span id="invoice-paid-summary">0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row" class="ps-3 pb-3 text-muted fw-normal">Balance due</th>
+                                        <td class="pe-3 pb-3 text-success">৳ <span id="invoice-due-display">0.00</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="bi bi-check2-circle me-1"></i>Create invoice
+                            </button>
+                            <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Back to appointments
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const totalInput = document.getElementById('{{ form.total.id_for_label }}');
+    const discountInput = document.getElementById('{{ form.discount.id_for_label }}');
+    const paidDisplay = document.getElementById('invoice-paid-display');
+    const grossDisplay = document.getElementById('invoice-gross-display');
+    const discountDisplay = document.getElementById('invoice-discount-display');
+    const netDisplay = document.getElementById('invoice-net-display');
+    const paidSummary = document.getElementById('invoice-paid-summary');
+    const dueDisplay = document.getElementById('invoice-due-display');
+
+    function parseAmount(value) {
+        const n = parseFloat(String(value).replace(/,/g, ''));
+        return Number.isFinite(n) && n >= 0 ? n : 0;
+    }
+
+    function formatAmount(value) {
+        return parseAmount(value).toFixed(2);
+    }
+
+    function recalculate() {
+        const total = parseAmount(totalInput.value);
+        let discount = parseAmount(discountInput.value);
+        if (discount > total) {
+            discount = total;
+            discountInput.value = formatAmount(total);
+        }
+        const paid = Math.max(total - discount, 0);
+        const formattedPaid = formatAmount(paid);
+
+        paidDisplay.value = formattedPaid;
+        grossDisplay.textContent = formatAmount(total);
+        discountDisplay.textContent = formatAmount(discount);
+        netDisplay.textContent = formattedPaid;
+        paidSummary.textContent = formattedPaid;
+        dueDisplay.textContent = '0.00';
+    }
+
+    totalInput.addEventListener('input', recalculate);
+    discountInput.addEventListener('input', recalculate);
+    discountInput.addEventListener('blur', recalculate);
+    recalculate();
+})();
+</script>
+{% endblock %}

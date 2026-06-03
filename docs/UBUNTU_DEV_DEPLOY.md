@@ -21,20 +21,21 @@ Same idea as Windows: edit the **hosts** file → open a friendly name instead o
 5. [Step 2 — Update Ubuntu and install packages](#step-2--update-ubuntu-and-install-packages)
 6. [Step 3 — Find your server IP](#step-3--find-your-server-ip)
 7. [Step 4 — Create PostgreSQL database](#step-4--create-postgresql-database)
-8. [Step 5 — Get project onto the server](#step-5--get-project-onto-the-server)
-9. [Step 6 — Set folder permissions](#step-6--set-folder-permissions)
-10. [Step 7 — Create Python virtual environment](#step-7--create-python-virtual-environment)
-11. [Step 8 — Create `.env` configuration file](#step-8--create-env-configuration-file)
-12. [Step 9 — Django database and admin user](#step-9--django-database-and-admin-user)
-13. [Step 10 — Start Gunicorn (systemd service)](#step-10--start-gunicorn-systemd-service)
-14. [Step 11 — Configure Nginx (web server)](#step-11--configure-nginx-web-server)
-15. [Step 12 — Open the app in your browser](#step-12--open-the-app-in-your-browser)
-16. [Step 13 — Windows hosts file (optional friendly name)](#step-13--windows-hosts-file-optional-friendly-name)
-17. [Step 14 — Optional: auto-install script](#step-14--optional-auto-install-script)
-18. [Daily use and updates](#daily-use-and-updates)
-19. [Full checklist](#full-checklist)
-20. [Troubleshooting](#troubleshooting)
-21. [Project files reference](#project-files-reference)
+8. [PostgreSQL SQL — list tables, view & update data](#postgresql-sql-reference--list-tables-view-and-update-data)
+9. [Step 5 — Get project onto the server](#step-5--get-project-onto-the-server)
+10. [Step 6 — Set folder permissions](#step-6--set-folder-permissions)
+11. [Step 7 — Create Python virtual environment](#step-7--create-python-virtual-environment)
+12. [Step 8 — Create `.env` configuration file](#step-8--create-env-configuration-file)
+13. [Step 9 — Django database and admin user](#step-9--django-database-and-admin-user)
+14. [Step 10 — Start Gunicorn (systemd service)](#step-10--start-gunicorn-systemd-service)
+15. [Step 11 — Configure Nginx (web server)](#step-11--configure-nginx-web-server)
+16. [Step 12 — Open the app in your browser](#step-12--open-the-app-in-your-browser)
+17. [Step 13 — Windows hosts file (optional friendly name)](#step-13--windows-hosts-file-optional-friendly-name)
+18. [Step 14 — Optional: auto-install script](#step-14--optional-auto-install-script)
+19. [Daily use and updates](#daily-use-and-updates)
+20. [Full checklist](#full-checklist)
+21. [Troubleshooting](#troubleshooting)
+22. [Project files reference](#project-files-reference)
 
 ---
 
@@ -286,6 +287,337 @@ If this fails, fix PostgreSQL before continuing.
 | Port | `5432` | `.env` → `DB_PORT` |
 
 Django reads these from **`.env`** via **`config/settings.py`**.
+
+---
+
+## PostgreSQL SQL reference — list tables, view and update data
+
+Use this section **after** `manage.py migrate` (Step 9) so tables exist. Handy for checking data on the server without opening the web app.
+
+> **Tip:** For normal day-to-day edits, use the **web app** or **Django Admin** (`/admin/`). Use SQL mainly for inspection, fixes, or learning. Always use `WHERE` on `UPDATE` and `DELETE` so you do not change every row.
+
+### Connect to the clinic database
+
+**As `clinic_user` (matches `.env`):**
+
+```bash
+psql -h localhost -U clinic_user -d clinic_db
+```
+
+**As postgres superuser:**
+
+```bash
+sudo -u postgres psql -d clinic_db
+```
+
+Inside `psql`, prompt looks like: `clinic_db=>`
+
+**Exit:** `\q` or `Ctrl+D`
+
+**One-line query from shell (no interactive psql):**
+
+```bash
+psql -h localhost -U clinic_user -d clinic_db -c "SELECT COUNT(*) FROM patients_patient;"
+```
+
+---
+
+### psql shortcuts (inside interactive session)
+
+| Command | Meaning |
+|---------|---------|
+| `\l` | List all databases |
+| `\c clinic_db` | Connect to `clinic_db` |
+| `\dt` | List all tables in current database |
+| `\dt patients_*` or `\dt appointments_*` | List clinic app tables |
+| `\d patients_patient` | Show columns and types for one table |
+| `\d+ patients_patient` | Same, with extra detail (size, description) |
+| `\q` | Quit |
+
+---
+
+### Main SPMS tables (after migrate)
+
+Django creates these table names automatically. Names use the **app label** (`patients`, `appointments`, …), **not** `apps_patients`:
+
+| Table | App data |
+|-------|----------|
+| `patients_patient` | Patients (name, phone, age, …) |
+| `appointments_appointment` | Appointments (date, serial, status) |
+| `billing_invoice` | Invoices (total, paid, due, status) |
+| `accounts_userprofile` | Staff roles linked to login users |
+| `auth_user` | Login usernames (Django users) |
+| `django_migrations` | Which migrations were applied |
+
+If you see `relation "appointments_appointment" does not exist`, tables were never created — run Step 9: `manage.py migrate`. Always confirm names with `\dt` on your server.
+
+**List table names with SQL:**
+
+```sql
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_type = 'BASE TABLE'
+ORDER BY table_name;
+```
+
+**Count rows in each main table:**
+
+```sql
+SELECT 'patients' AS entity, COUNT(*) FROM patients_patient
+UNION ALL
+SELECT 'appointments', COUNT(*) FROM appointments_appointment
+UNION ALL
+SELECT 'invoices', COUNT(*) FROM billing_invoice
+UNION ALL
+SELECT 'users', COUNT(*) FROM auth_user;
+```
+
+---
+
+### View table data (SELECT)
+
+**All patients (newest first):**
+
+```sql
+SELECT id, name, phone, age, gender, date_of_birth, created_at
+FROM patients_patient
+ORDER BY created_at DESC;
+```
+
+**One patient by id:**
+
+```sql
+SELECT * FROM patients_patient WHERE id = 1;
+```
+
+**Search by name or phone:**
+
+```sql
+SELECT id, name, phone
+FROM patients_patient
+WHERE name ILIKE '%rahim%'
+   OR phone LIKE '%017%';
+```
+
+**Appointments with patient name (JOIN):**
+
+```sql
+SELECT
+  a.id,
+  a.date,
+  a.serial_no,
+  a.status,
+  p.name AS patient_name,
+  p.phone
+FROM appointments_appointment a
+JOIN patients_patient p ON p.id = a.patient_id
+ORDER BY a.date DESC, a.serial_no;
+```
+
+**Invoices with appointment and patient:**
+
+```sql
+SELECT
+  i.id AS invoice_id,
+  i.total,
+  i.discount,
+  i.paid,
+  i.due,
+  i.status,
+  i.is_void,
+  p.name AS patient_name,
+  apt.date AS appointment_date,
+  apt.serial_no
+FROM billing_invoice i
+JOIN appointments_appointment apt ON apt.id = i.appointment_id
+JOIN patients_patient p ON p.id = apt.patient_id
+ORDER BY i.created_at DESC;
+```
+
+**Staff users and clinic roles:**
+
+```sql
+SELECT u.id, u.username, u.email, u.is_superuser, up.role
+FROM auth_user u
+LEFT JOIN accounts_userprofile up ON up.user_id = u.id
+ORDER BY u.username;
+```
+
+**Limit rows (first 10):**
+
+```sql
+SELECT * FROM patients_patient LIMIT 10;
+```
+
+**Pretty output in psql:**
+
+```sql
+\x on
+SELECT * FROM patients_patient WHERE id = 1;
+\x off
+```
+
+---
+
+### Update table data (UPDATE)
+
+Always include **`WHERE`** with a specific `id` (or unique key). Check with `SELECT` first.
+
+**Preview before update:**
+
+```sql
+SELECT id, name, phone FROM patients_patient WHERE id = 3;
+```
+
+**Update one patient’s phone and address:**
+
+```sql
+UPDATE patients_patient
+SET phone = '01711112222',
+    address = 'Updated address from SQL'
+WHERE id = 3;
+```
+
+**Change appointment status** (`PENDING`, `WAITING`, `DONE`):
+
+```sql
+UPDATE appointments_appointment
+SET status = 'DONE'
+WHERE id = 5;
+```
+
+**Mark invoice as paid (example — adjust amounts to match your row):**
+
+```sql
+UPDATE billing_invoice
+SET paid = 500.00,
+    due = 0.00,
+    status = 'PAID'
+WHERE id = 2;
+```
+
+**Change staff clinic role** (`admin`, `reception`, `billing`, `viewer`):
+
+```sql
+UPDATE accounts_userprofile
+SET role = 'reception'
+WHERE user_id = (SELECT id FROM auth_user WHERE username = 'admin');
+```
+
+**Verify after update:**
+
+```sql
+SELECT * FROM patients_patient WHERE id = 3;
+```
+
+---
+
+### Safe updates with transactions
+
+If something looks wrong, you can roll back before leaving the session:
+
+```sql
+BEGIN;
+
+UPDATE patients_patient SET phone = '01999999999' WHERE id = 1;
+
+-- Check:
+SELECT id, phone FROM patients_patient WHERE id = 1;
+
+-- Keep changes:
+COMMIT;
+
+-- Or undo everything in this block:
+-- ROLLBACK;
+```
+
+---
+
+### Insert and delete (use with care)
+
+**Insert a patient manually** (usually better via the web form):
+
+```sql
+INSERT INTO patients_patient (name, phone, gender, address, created_at)
+VALUES ('Test Patient', '01700000000', 'M', 'Test address', NOW());
+```
+
+**Delete one patient** — fails if appointments still reference them (`ON DELETE PROTECT`):
+
+```sql
+DELETE FROM patients_patient WHERE id = 99;
+```
+
+If delete fails, remove or reassign related rows in `appointments_appointment` first, or delete only test data you created.
+
+---
+
+### Useful maintenance queries
+
+**Tables and approximate row counts:**
+
+```sql
+SELECT
+  relname AS table_name,
+  n_live_tup AS approx_rows
+FROM pg_stat_user_tables
+WHERE schemaname = 'public'
+ORDER BY relname;
+```
+
+**Recent patients (last 7 days):**
+
+```sql
+SELECT id, name, phone, created_at
+FROM patients_patient
+WHERE created_at >= NOW() - INTERVAL '7 days'
+ORDER BY created_at DESC;
+```
+
+**Unpaid invoices:**
+
+```sql
+SELECT id, total, paid, due, status
+FROM billing_invoice
+WHERE status = 'UNPAID' AND is_void = false;
+```
+
+**Check migrations applied:**
+
+```sql
+SELECT id, app, name, applied
+FROM django_migrations
+ORDER BY applied DESC;
+```
+
+---
+
+### Reset password via SQL (emergency only)
+
+Prefer Django:
+
+```bash
+cd /var/www/clinic
+sudo -u www-data .venv/bin/python manage.py changepassword admin
+```
+
+Django stores **hashed** passwords in `auth_user.password` — do not paste plain text into SQL. Use `createsuperuser` or `changepassword` instead.
+
+---
+
+### Quick reference card
+
+| Task | SQL / command |
+|------|----------------|
+| Open DB | `psql -h localhost -U clinic_user -d clinic_db` |
+| List tables | `\dt` or `SELECT table_name FROM information_schema.tables WHERE table_schema='public';` |
+| Table structure | `\d patients_patient` |
+| All rows | `SELECT * FROM patients_patient;` |
+| Filter | `SELECT * FROM ... WHERE id = 1;` |
+| Update row | `UPDATE ... SET col = val WHERE id = 1;` |
+| Undo batch | `BEGIN;` … `ROLLBACK;` |
+| Quit | `\q` |
 
 ---
 
@@ -868,7 +1200,7 @@ sudo -u www-data .venv/bin/python manage.py changepassword admin
 | **502 Bad Gateway** | Gunicorn not running: `sudo systemctl status clinic` and `journalctl -u clinic -n 50` |
 | **`ModuleNotFoundError: django`** | Use `.venv/bin/python`, not system python |
 | **Database connection failed** | Check `.env` password matches PostgreSQL; test with `psql` (Step 4.3) |
-| **`no such table`** | Run `manage.py migrate` again |
+| **`no such table`** / **`relation does not exist`** | Run `manage.py migrate`; list tables with `\dt` — use `appointments_appointment` not `apps_appointments_appointment` |
 | **Page loads but no CSS** | Run `collectstatic`, check Nginx `alias` points to `/var/www/clinic/staticfiles/` |
 | **Cannot open from Windows** | Same Wi‑Fi? `ping SERVER_IP`. VM bridged network? |
 | **Nginx error** | `sudo nginx -t` and `sudo journalctl -u nginx -n 20` |

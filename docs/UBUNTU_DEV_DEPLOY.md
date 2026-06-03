@@ -1,6 +1,6 @@
 # Ubuntu Developer Deploy — Full Step-by-Step Guide
 
-**Patient Management System** on Ubuntu with **PostgreSQL**, accessed by **IP address** or a **local hosts name** (e.g. `clinic.local`).
+**Patient Management System (SPMS)** on Ubuntu with **PostgreSQL**, accessed by **IP address** or a **local hosts name** (e.g. `clinic.local`).
 
 - No live domain  
 - No HTTPS / SSL  
@@ -8,30 +8,33 @@
 
 Same idea as Windows: edit the **hosts** file → open a friendly name instead of remembering the IP.
 
+**GitHub repository:** https://github.com/mdshiabulcse/spms.git
+
 ---
 
 ## Table of contents
 
 1. [What you will build](#1-what-you-will-build)
 2. [Before you start](#2-before-you-start)
-3. [Step 1 — Connect to Ubuntu server](#step-1--connect-to-ubuntu-server)
-4. [Step 2 — Update Ubuntu and install packages](#step-2--update-ubuntu-and-install-packages)
-5. [Step 3 — Find your server IP](#step-3--find-your-server-ip)
-6. [Step 4 — Create PostgreSQL database](#step-4--create-postgresql-database)
-7. [Step 5 — Copy project from Windows to Ubuntu](#step-5--copy-project-from-windows-to-ubuntu)
-8. [Step 6 — Set folder permissions](#step-6--set-folder-permissions)
-9. [Step 7 — Create Python virtual environment](#step-7--create-python-virtual-environment)
-10. [Step 8 — Create `.env` configuration file](#step-8--create-env-configuration-file)
-11. [Step 9 — Django database and admin user](#step-9--django-database-and-admin-user)
-12. [Step 10 — Start Gunicorn (systemd service)](#step-10--start-gunicorn-systemd-service)
-13. [Step 11 — Configure Nginx (web server)](#step-11--configure-nginx-web-server)
-14. [Step 12 — Open the app in your browser](#step-12--open-the-app-in-your-browser)
-15. [Step 13 — Windows hosts file (optional friendly name)](#step-13--windows-hosts-file-optional-friendly-name)
-16. [Step 14 — Optional: auto-install script](#step-14--optional-auto-install-script)
-17. [Daily use and updates](#daily-use-and-updates)
-18. [Full checklist](#full-checklist)
-19. [Troubleshooting](#troubleshooting)
-20. [Project files reference](#project-files-reference)
+3. [Step 0 — Push code to GitHub (Windows)](#step-0--push-code-to-github-windows)
+4. [Step 1 — Connect to Ubuntu server](#step-1--connect-to-ubuntu-server)
+5. [Step 2 — Update Ubuntu and install packages](#step-2--update-ubuntu-and-install-packages)
+6. [Step 3 — Find your server IP](#step-3--find-your-server-ip)
+7. [Step 4 — Create PostgreSQL database](#step-4--create-postgresql-database)
+8. [Step 5 — Get project onto the server](#step-5--get-project-onto-the-server)
+9. [Step 6 — Set folder permissions](#step-6--set-folder-permissions)
+10. [Step 7 — Create Python virtual environment](#step-7--create-python-virtual-environment)
+11. [Step 8 — Create `.env` configuration file](#step-8--create-env-configuration-file)
+12. [Step 9 — Django database and admin user](#step-9--django-database-and-admin-user)
+13. [Step 10 — Start Gunicorn (systemd service)](#step-10--start-gunicorn-systemd-service)
+14. [Step 11 — Configure Nginx (web server)](#step-11--configure-nginx-web-server)
+15. [Step 12 — Open the app in your browser](#step-12--open-the-app-in-your-browser)
+16. [Step 13 — Windows hosts file (optional friendly name)](#step-13--windows-hosts-file-optional-friendly-name)
+17. [Step 14 — Optional: auto-install script](#step-14--optional-auto-install-script)
+18. [Daily use and updates](#daily-use-and-updates)
+19. [Full checklist](#full-checklist)
+20. [Troubleshooting](#troubleshooting)
+21. [Project files reference](#project-files-reference)
 
 ---
 
@@ -57,6 +60,7 @@ Same idea as Windows: edit the **hosts** file → open a friendly name instead o
 | Web | Nginx | Sends browser requests to Gunicorn |
 | Config | `.env` file | Passwords, IP, debug mode |
 | Code path | `/var/www/clinic` | Project folder on server |
+| Source | GitHub `spms` | Clone or pull updates |
 
 ---
 
@@ -67,14 +71,19 @@ Same idea as Windows: edit the **hosts** file → open a friendly name instead o
 | Item | Example |
 |------|---------|
 | Ubuntu server | Ubuntu 22.04 or 24.04 (VM, VPS, or physical PC) |
-| SSH access | User `ubuntu` with `sudo` |
+| SSH access | User with `sudo` (e.g. `ubuntu`, `vehadmin`) |
 | Server on network | Same Wi‑Fi/LAN as your Windows PC (for testing) |
-| Windows PC | Project folder + PowerShell for `scp` |
+| Windows PC | Git Bash or PowerShell; project at `C:\shiab\Simple Patient Management System` |
 | Server IP | e.g. `192.168.1.10` (you will find this in Step 3) |
+| GitHub repo | https://github.com/mdshiabulcse/spms.git (public clone; private needs token/SSH key) |
 
 ### Replace in this guide
 
-Everywhere you see **`192.168.1.10`**, use **your real server IP**.
+| Placeholder | Replace with |
+|-------------|--------------|
+| `192.168.1.10` | Your real server IP |
+| `ubuntu` or `vehadmin` | Your actual SSH username |
+| `devpassword123` | Your PostgreSQL password (keep same in `.env`) |
 
 ### Project path on server (fixed in this guide)
 
@@ -82,13 +91,90 @@ Everywhere you see **`192.168.1.10`**, use **your real server IP**.
 /var/www/clinic
 ```
 
+### What is never copied to the server
+
+| Item | Reason |
+|------|--------|
+| `.venv/` | Windows venv does not work on Linux — create on server |
+| `.env` | Secrets stay on server only — copy from `.env.dev.example` |
+| `data/db.sqlite3` | Dev SQLite file — production uses PostgreSQL |
+
+These are listed in `.gitignore` and are not in GitHub.
+
+---
+
+## Step 0 — Push code to GitHub (Windows)
+
+Do this on your **Windows PC** before deploying (or after you change code).
+
+Open **Git Bash** or PowerShell in the project folder:
+
+```bash
+cd "/c/shiab/Simple Patient Management System"
+```
+
+### 0.1 First-time Git setup (once)
+
+```bash
+git init
+git remote add origin https://github.com/mdshiabulcse/spms.git
+```
+
+If you see `error: remote origin already exists`, skip `git remote add` — origin is already set.
+
+```bash
+git branch -M main
+```
+
+### 0.2 Stage, commit, and push
+
+**You must run `git add` before `git commit`.** A commit with no staged files does nothing.
+
+```bash
+git add .
+git status
+git commit -m "first commit"
+git push -u origin main
+```
+
+| Command | What it does |
+|---------|----------------|
+| `git add .` | Stages all project files (respects `.gitignore`) |
+| `git commit` | Creates a snapshot on your machine |
+| `git push -u origin main` | Uploads `main` to GitHub |
+
+### 0.3 Common Git errors on Windows
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `src refspec main does not match any` | No commit on `main` yet | Run `git add .` then `git commit` then push again |
+| `nothing added to commit` | Files not staged | Run `git add .` before `git commit` |
+| `remote origin already exists` | Remote configured | Use `git remote -v` to verify URL; use `git push` only |
+| Push asks for login | GitHub auth | Use GitHub username + **Personal Access Token** (not account password) |
+
+### 0.4 Later changes
+
+```bash
+git add .
+git commit -m "describe your change"
+git push
+```
+
+On the server, pull updates (see [Daily use and updates](#daily-use-and-updates)).
+
 ---
 
 ## Step 1 — Connect to Ubuntu server
 
-On **Windows**, open PowerShell:
+On **Windows**, open PowerShell or Git Bash:
 
-```powershell
+```bash
+ssh vehadmin@192.168.1.10
+```
+
+Or if your user is `ubuntu`:
+
+```bash
 ssh ubuntu@192.168.1.10
 ```
 
@@ -130,9 +216,10 @@ sudo apt install -y \
 python3 --version
 psql --version
 nginx -v
+git --version
 ```
 
-Expected: Python 3.10+, PostgreSQL, Nginx — no errors.
+Expected: Python 3.10+, PostgreSQL, Nginx, Git — no errors.
 
 ---
 
@@ -175,6 +262,8 @@ GRANT ALL PRIVILEGES ON DATABASE clinic_db TO clinic_user;
 \q
 ```
 
+If user or database already exists, PostgreSQL will show an error — that is OK if you created them before.
+
 ### 4.3 Test connection
 
 ```bash
@@ -200,30 +289,22 @@ Django reads these from **`.env`** via **`config/settings.py`**.
 
 ---
 
-## Step 5 — Copy project from Windows to Ubuntu
+## Step 5 — Get project onto the server
 
-### 5.1 On Windows — copy files to server
+Choose **one** method. **Option A (Git clone)** is recommended after your code is on GitHub.
 
-Open **new PowerShell window** (stay connected with SSH in the other window):
+---
 
-```powershell
-scp -r "C:\shiab\Simple Patient Management System" ubuntu@192.168.1.10:/tmp/clinic
-```
+### Option A — Git clone from GitHub (recommended)
 
-Wait until upload finishes (may take a few minutes).
-
-**Do not copy** `.venv` from Windows — Ubuntu will create its own.
-
-### 5.2 On Ubuntu — move to `/var/www/clinic`
-
-Back in **SSH**:
+Run on **Ubuntu** (SSH session):
 
 ```bash
 sudo mkdir -p /var/www
-sudo mv /tmp/clinic "/var/www/clinic"
+sudo git clone https://github.com/mdshiabulcse/spms.git /var/www/clinic
 ```
 
-### 5.3 Verify project files
+**Verify files exist:**
 
 ```bash
 ls /var/www/clinic/manage.py
@@ -231,7 +312,87 @@ ls /var/www/clinic/config/settings.py
 ls /var/www/clinic/requirements.txt
 ```
 
-All three should exist.
+All three must exist. If any is missing, the clone failed — check network and repo URL.
+
+**Private repository:** use a Personal Access Token or SSH deploy key:
+
+```bash
+sudo git clone https://YOUR_TOKEN@github.com/mdshiabulcse/spms.git /var/www/clinic
+```
+
+Or clone as your user, then move:
+
+```bash
+git clone git@github.com:mdshiabulcse/spms.git ~/spms
+sudo mkdir -p /var/www
+sudo mv ~/spms /var/www/clinic
+```
+
+Then continue to [Step 6](#step-6--set-folder-permissions).
+
+---
+
+### Option B — Copy from Windows with `scp`
+
+Use this if you cannot use GitHub on the server.
+
+#### B.1 On Windows — upload to `/tmp/clinic`
+
+Open a **new** PowerShell or Git Bash window (keep SSH open in another window):
+
+```powershell
+scp -r "C:\shiab\Simple Patient Management System" vehadmin@192.168.1.10:/tmp/clinic
+```
+
+Or with Git Bash path:
+
+```bash
+scp -r "/c/shiab/Simple Patient Management System" vehadmin@192.168.1.10:/tmp/clinic
+```
+
+Wait until upload finishes (may take several minutes).
+
+**Important:** Do not run Step B.2 until this upload completes. If you skip B.1, you will see:
+
+```text
+mv: cannot stat '/tmp/clinic': No such file or directory
+```
+
+#### B.2 On Ubuntu — move to `/var/www/clinic`
+
+**Only after** `/tmp/clinic` exists:
+
+```bash
+ls /tmp/clinic/manage.py
+```
+
+If that works:
+
+```bash
+sudo mkdir -p /var/www
+sudo mv /tmp/clinic /var/www/clinic
+```
+
+#### B.3 Verify
+
+```bash
+ls /var/www/clinic/manage.py
+ls /var/www/clinic/config/settings.py
+ls /var/www/clinic/requirements.txt
+```
+
+**Do not copy** `.venv` from Windows — Ubuntu creates its own in Step 7.
+
+---
+
+### Step 5 troubleshooting
+
+| Problem | What to do |
+|---------|------------|
+| `cannot stat '/tmp/clinic'` | Run `scp` from Windows first (Option B.1), or use Git clone (Option A) |
+| `fatal: destination path already exists` | Folder exists: `sudo rm -rf /var/www/clinic` then clone again, or use `git pull` inside existing folder |
+| `Permission denied (publickey)` on clone | Install `git`, check internet; for private repo use token or SSH key |
+| Wrong files in `/var/www/clinic` | Ensure `manage.py` is directly under `/var/www/clinic`, not nested in an extra folder |
 
 ---
 
@@ -249,7 +410,9 @@ sudo chown www-data:www-data /var/www/clinic/run
 | `/var/www/clinic` | Full project |
 | `/var/www/clinic/run` | Gunicorn socket file |
 | `/var/www/clinic/staticfiles` | CSS/JS after `collectstatic` |
-| `/var/www/clinic/.venv` | Python packages (created next step) |
+| `/var/www/clinic/.venv` | Python packages (created in Step 7) |
+
+If you cloned with `sudo git clone`, ownership may be `root`. The `chown` above fixes that for Gunicorn (`www-data`).
 
 ---
 
@@ -331,7 +494,8 @@ CSRF_TRUSTED_ORIGINS=http://192.168.1.10,http://clinic.local,http://localhost,ht
 | `ALLOWED_HOSTS` | IP + names | Django accepts these hosts |
 | `CSRF_TRUSTED_ORIGINS` | `http://...` | Required for login forms over HTTP |
 
-Replace **`192.168.1.10`** with your IP from Step 3.
+Replace **`192.168.1.10`** with your IP from Step 3.  
+Replace **`devpassword123`** if you used a different DB password in Step 4.
 
 Save in nano: **Ctrl+O**, Enter, **Ctrl+X**.
 
@@ -395,7 +559,7 @@ Enter:
 - Email (optional)  
 - Password (twice)
 
-Remember this — you use it to log in.
+Remember this — you use it to log in at `/accounts/login/` and `/admin/`.
 
 ---
 
@@ -564,14 +728,16 @@ Edit `/etc/hosts` as root:
 
 ## Step 14 — Optional: auto-install script
 
-If project is already in `/var/www/clinic`, you can run the installer (Steps 2–11 partially automated):
+If the project is already in `/var/www/clinic` (after Git clone or `scp`), you can automate Steps 2–11:
 
 ```bash
 cd /var/www/clinic
 sudo SERVER_IP=192.168.1.10 DB_PASS=devpassword123 bash deploy/install-dev.sh
 ```
 
-Then create admin:
+Replace `192.168.1.10` and `devpassword123` with your values.
+
+Then create admin (script does not run this interactively):
 
 ```bash
 sudo -u www-data .venv/bin/python manage.py createsuperuser
@@ -598,27 +764,61 @@ sudo journalctl -u clinic -f
 
 Press **Ctrl+C** to exit logs.
 
-### After you change code on server
+### Deploy code updates (Git — recommended)
+
+**On Windows** — push changes:
+
+```bash
+cd "/c/shiab/Simple Patient Management System"
+git add .
+git commit -m "your change description"
+git push
+```
+
+**On Ubuntu** — pull and apply:
 
 ```bash
 cd /var/www/clinic
+sudo git pull origin main
+sudo chown -R www-data:www-data /var/www/clinic
 sudo -u www-data .venv/bin/pip install -r requirements.txt
 sudo -u www-data .venv/bin/python manage.py migrate
 sudo -u www-data .venv/bin/python manage.py collectstatic --noinput
 sudo systemctl restart clinic
 ```
 
-### Copy new code from Windows again
-
-```powershell
-scp -r "C:\shiab\Simple Patient Management System\*" ubuntu@192.168.1.10:/tmp/clinic-update/
-```
-
-On server:
+If `git pull` fails with permission errors, fix ownership then pull:
 
 ```bash
-sudo rsync -av /tmp/clinic-update/ /var/www/clinic/ --exclude .venv
 sudo chown -R www-data:www-data /var/www/clinic
+cd /var/www/clinic
+sudo -u www-data git pull origin main
+```
+
+Or pull as root then fix ownership:
+
+```bash
+cd /var/www/clinic
+sudo git pull origin main
+sudo chown -R www-data:www-data /var/www/clinic
+```
+
+### Deploy code updates (`scp` — alternative)
+
+**Windows:**
+
+```powershell
+scp -r "C:\shiab\Simple Patient Management System\*" vehadmin@192.168.1.10:/tmp/clinic-update/
+```
+
+**Ubuntu:**
+
+```bash
+sudo rsync -av /tmp/clinic-update/ /var/www/clinic/ --exclude .venv --exclude .env
+sudo chown -R www-data:www-data /var/www/clinic
+sudo -u www-data .venv/bin/pip install -r requirements.txt
+sudo -u www-data .venv/bin/python manage.py migrate
+sudo -u www-data .venv/bin/python manage.py collectstatic --noinput
 sudo systemctl restart clinic
 ```
 
@@ -635,12 +835,13 @@ sudo -u www-data .venv/bin/python manage.py changepassword admin
 
 | Step | Task | Done |
 |------|------|------|
+| 0 | Code pushed to GitHub (`git add`, `commit`, `push`) | ☐ |
 | 1 | SSH into Ubuntu | ☐ |
-| 2 | `apt install` python3, postgresql, nginx | ☐ |
+| 2 | `apt install` python3, postgresql, nginx, git | ☐ |
 | 3 | Note server IP (`hostname -I`) | ☐ |
 | 4 | Create `clinic_user` + `clinic_db` | ☐ |
-| 5 | `scp` project to `/var/www/clinic` | ☐ |
-| 6 | Permissions `www-data` | ☐ |
+| 5 | Project in `/var/www/clinic` (clone or `scp`) | ☐ |
+| 6 | Permissions `www-data` + `run/` + `staticfiles/` | ☐ |
 | 7 | `.venv` + `pip install -r requirements.txt` | ☐ |
 | 8 | `.env` with correct IP + DB password | ☐ |
 | 9 | `manage.py check` | ☐ |
@@ -658,6 +859,9 @@ sudo -u www-data .venv/bin/python manage.py changepassword admin
 
 | Problem | What to do |
 |---------|------------|
+| **`mv: cannot stat '/tmp/clinic'`** | Upload with `scp` first (Step 5 Option B), or use `git clone` (Step 5 Option A) |
+| **`src refspec main does not match any`** (Windows) | Run `git add .` and `git commit` before `git push` |
+| **`nothing added to commit`** (Windows) | Run `git add .` before `git commit` |
 | **SSH connection refused** | Check server IP, VM network, firewall |
 | **`DisallowedHost`** | Add IP and `clinic.local` to `ALLOWED_HOSTS` in `.env`, then `sudo systemctl restart clinic` |
 | **CSRF verification failed** | Add `http://YOUR_IP` and `http://clinic.local` to `CSRF_TRUSTED_ORIGINS` in `.env`, restart clinic |
@@ -669,11 +873,13 @@ sudo -u www-data .venv/bin/python manage.py changepassword admin
 | **Cannot open from Windows** | Same Wi‑Fi? `ping SERVER_IP`. VM bridged network? |
 | **Nginx error** | `sudo nginx -t` and `sudo journalctl -u nginx -n 20` |
 | **Port 80 in use** | `sudo ss -tlnp | grep :80` |
+| **`git pull` permission denied** | `sudo chown -R www-data:www-data /var/www/clinic` or pull with `sudo` then chown |
 
 ### Useful debug commands
 
 ```bash
 cd /var/www/clinic
+ls manage.py config/settings.py .env
 sudo -u www-data .venv/bin/python manage.py check
 sudo systemctl status clinic nginx postgresql
 curl -I http://127.0.0.1/
@@ -695,6 +901,7 @@ curl -I http://127.0.0.1/
 | `deploy/install-dev.sh` | Optional automated installer |
 | `/var/www/clinic/.venv/` | Python virtual environment on server |
 | PostgreSQL data | Managed by PostgreSQL (not a file in project folder) |
+| GitHub | https://github.com/mdshiabulcse/spms.git |
 
 ---
 
@@ -710,21 +917,36 @@ curl -I http://127.0.0.1/
 
 ## Quick command summary (copy block)
 
-**On Ubuntu (after project is in `/var/www/clinic`):**
+### Windows — push to GitHub
 
 ```bash
+cd "/c/shiab/Simple Patient Management System"
+git add .
+git commit -m "your message"
+git push
+```
+
+### Ubuntu — fresh deploy with Git
+
+```bash
+sudo apt update && sudo apt install -y python3 python3-venv python3-pip postgresql postgresql-contrib libpq-dev nginx git
+sudo mkdir -p /var/www
+sudo git clone https://github.com/mdshiabulcse/spms.git /var/www/clinic
+sudo mkdir -p /var/www/clinic/run /var/www/clinic/staticfiles
+sudo chown -R www-data:www-data /var/www/clinic
 cd /var/www/clinic
-sudo apt update && sudo apt install -y python3 python3-venv python3-pip postgresql postgresql-contrib libpq-dev nginx
 sudo -u postgres psql -c "CREATE USER clinic_user WITH PASSWORD 'devpassword123';" 2>/dev/null || true
 sudo -u postgres psql -c "CREATE DATABASE clinic_db OWNER clinic_user;" 2>/dev/null || true
 sudo -u www-data python3 -m venv .venv
 sudo -u www-data .venv/bin/pip install -r requirements.txt
 sudo cp .env.dev.example .env && sudo nano .env
+sudo chown www-data:www-data .env && sudo chmod 600 .env
 sudo -u www-data .venv/bin/python manage.py migrate
 sudo -u www-data .venv/bin/python manage.py collectstatic --noinput
 sudo -u www-data .venv/bin/python manage.py createsuperuser
 sudo cp deploy/gunicorn-dev.service /etc/systemd/system/clinic.service
 sudo cp deploy/nginx-clinic-dev.conf /etc/nginx/sites-available/clinic
+sudo sed -i 's/192.168.1.10/YOUR_REAL_IP/g' /etc/nginx/sites-available/clinic
 sudo ln -sf /etc/nginx/sites-available/clinic /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo systemctl daemon-reload && sudo systemctl enable clinic && sudo systemctl start clinic
